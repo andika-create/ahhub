@@ -102,7 +102,16 @@ end
 local function buildGUI()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AhokHubUI"
-    ScreenGui.Parent = game:GetService("CoreGui")
+    
+    -- Coba masukkan ke CoreGui dulu (biar tidak dicolong GUI explorer)
+    -- Jika gagal (biasanya executor mobile tertentu), fallback ke PlayerGui
+    local success, _ = pcall(function()
+        ScreenGui.Parent = game:GetService("CoreGui")
+    end)
+    
+    if not success then
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
 
     local Main = Instance.new("Frame")
     Main.Size = UDim2.new(0, 300, 0, 350)
@@ -201,9 +210,25 @@ end
 -- ============================================
 -- SECTION 8: STARTUP
 -- ============================================
-if game.PlaceId == CONFIG.PLACE_ID then
-    buildGUI()
-    print("Ahok Hub Loaded. Use GitHub Raw URL to access latest updates.")
-else
-    warn("Ahok Hub: Wrong PlaceID! Use in 'The Forge'.")
+local function init()
+    print("--- [ Ahok Hub Debug ] ---")
+    print("Checking PlaceID: " .. game.PlaceId)
+    
+    -- Kita buat lebih fleksibel (tapi tetap ada peringatan)
+    if game.PlaceId ~= CONFIG.PLACE_ID then
+        warn("Ahok Hub: PlaceID tidak cocok (The Forge id: " .. CONFIG.PLACE_ID .. ")")
+        print("Script akan tetap berjalan untuk testing...")
+    end
+
+    local success, err = pcall(function()
+        buildGUI()
+    end)
+
+    if success then
+        print("Ahok Hub: GUI Created Successfully!")
+    else
+        warn("Ahok Hub: Error building GUI: " .. tostring(err))
+    end
 end
+
+init()
