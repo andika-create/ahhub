@@ -35,11 +35,12 @@ local HttpService    = game:GetService("HttpService")
 -- ============================================
 local LocalPlayer = Players.LocalPlayer
 local flags = {
-    WalkSpeed      = 16,
+    WalkSpeed      = 50, -- Default ditingkatkan
     SpeedEnabled   = false,
     AutoParry      = false,
     AutoFarm       = false,
     ESP            = false,
+    InfJump        = false, -- Fitur Baru
     TeleportSpeed  = 50,
 }
 getgenv().AhokFlags = flags
@@ -74,6 +75,14 @@ task.spawn(function()
             local hum = getHum()
             if hum then hum.WalkSpeed = flags.WalkSpeed end
         end
+    end
+end)
+
+-- >> Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if flags.InfJump then
+        local hum = getHum()
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
 end)
 
@@ -160,6 +169,7 @@ local function buildGUI()
     end
 
     createToggle("Speed Bypass", "SpeedEnabled")
+    createToggle("Infinite Jump", "InfJump") -- Tombol Baru
     createToggle("Auto Parry", "AutoParry")
     createToggle("ESP Highlight", "ESP", function(state)
         -- Logic ESP sederhana
@@ -184,7 +194,39 @@ local function buildGUI()
     SpeedLabel.BackgroundTransparency = 1
     SpeedLabel.Text = "Speed: " .. flags.WalkSpeed
     SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+    SpeedLabel.Font = Enum.Font.Gotham
+    SpeedLabel.TextSize = 12
     SpeedLabel.Parent = Main
+
+    local SpeedSlider = Instance.new("TextButton")
+    SpeedSlider.Size = UDim2.new(0.9, 0, 0, 10)
+    SpeedSlider.Position = UDim2.new(0.05, 0, 0, offset + 25)
+    SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    SpeedSlider.Text = ""
+    SpeedSlider.Parent = Main
+    Instance.new("UICorner", SpeedSlider).CornerRadius = UDim.new(0, 5)
+
+    local function updateSpeed(input)
+        local pos = math.clamp((input.Position.X - SpeedSlider.AbsolutePosition.X) / SpeedSlider.AbsoluteSize.X, 0, 1)
+        flags.WalkSpeed = math.floor(16 + (pos * 134)) -- Range 16 to 150
+        SpeedLabel.Text = "Speed: " .. flags.WalkSpeed
+    end
+
+    SpeedSlider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            updateSpeed(input)
+            local move; move = UserInputService.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement then updateSpeed(input) end
+            end)
+            local endCon; endCon = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    move:Disconnect()
+                    endCon:Disconnect()
+                end
+            end)
+        end
+    end)
+    offset = offset + 50
     
     -- Dragging logic
     local gui = Main
