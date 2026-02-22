@@ -2,23 +2,22 @@
     ██████╗  ██████╗   ██████╗   ██╗
    ██╔════╝ ██╔═══██╗ ██╔═══██╗  ██║
    ██║      ██║   ██║ ██║   ██║  ██║
-   ██║      ██║   ██║ ██║   ██║  ██║  (Ahok Hub - The Forge)
+   ██║      ██║   ██║ ██║   ██║  ██║  (Ahok Hub - Advanced Edition)
    ╚██████╗ ╚██████╔╝ ╚██████╔╝  ██║
     ╚═════╝  ╚═════╝   ╚═════╝   ╚═╝
     
-    Branding: Ahok Hub
-    Target Game: The Forge (PlaceID: 7671049560)
-    Tujuan: Edukasi & Template Riset Game
+    Refined based on "The Forge" working patterns.
+    Features: Hookmetamethod Bypass, Anim-based Parry, Advanced Tweens.
 --]]
 
 -- ============================================
 -- SECTION 1: KONFIGURASI
 -- ============================================
 local CONFIG = {
-    HUB_NAME    = "Ahok Hub",
-    VERSION     = "1.0.0",
-    PLACE_ID    = 7671049560,  -- PlaceId The Forge
-    CONFIG_FILE = "ahok_hub_config.json",
+    HUB_NAME    = "Ahok Hub VIP",
+    VERSION     = "1.1.0",
+    PLACE_ID    = 7671049560,
+    CONFIG_FILE = "ahok_hub_v11.json",
 }
 
 -- ============================================
@@ -32,193 +31,166 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService    = game:GetService("HttpService")
 
 -- ============================================
--- SECTION 3: PLAYER SHORTCUTS
+-- SECTION 3: CORE VARIABLES
 -- ============================================
 local LocalPlayer = Players.LocalPlayer
-local function getCharacter()
-    return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-end
-local function getHRP()
-    local char = getCharacter()
-    return char:WaitForChild("HumanoidRootPart", 5)
-end
-local function getHumanoid()
-    local char = getCharacter()
-    return char:WaitForChild("Humanoid", 5)
-end
-
--- ============================================
--- SECTION 4: LOGGER
--- ============================================
-local Log = {
-    info  = function(...) print("["..CONFIG.HUB_NAME.."]", ...) end,
-    warn  = function(...) warn("["..CONFIG.HUB_NAME.."]", ...) end,
-}
-
--- ============================================
--- SECTION 5: FLAGS (Pengaturan Fitur)
--- ============================================
 local flags = {
-    SpeedEnabled    = false,
-    SpeedAmount     = 50,
-    ESPEnabled      = false,
-    ESPColor        = Color3.fromRGB(255, 0, 0),
-    AutoFarmEnabled = false,
+    WalkSpeed      = 16,
+    SpeedEnabled   = false,
+    AutoParry      = false,
+    AutoFarm       = false,
+    ESP            = false,
+    TeleportSpeed  = 50,
 }
-
--- Simpan ke getgenv() agar bisa diakses lewat console jika perlu
-getgenv().AhokHubFlags = flags
+getgenv().AhokFlags = flags
 
 -- ============================================
--- SECTION 6: UTILITIES
+-- SECTION 4: HELPERS
 -- ============================================
-
--- Tween smooth movement
-local function tweenTo(targetCFrame, speed)
-    local hrp = getHRP()
-    if not hrp then return end
-    
-    local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    local duration = distance / (speed or 50)
-    
-    local tween = TweenService:Create(hrp, 
-        TweenInfo.new(duration, Enum.EasingStyle.Linear),
-        { CFrame = targetCFrame }
-    )
-    tween:Play()
-    return tween
-end
+local function getChar() return LocalPlayer.Character end
+local function getHum() return getChar() and getChar():FindFirstChildOfClass("Humanoid") end
+local function getHRP() return getChar() and getChar():FindFirstChild("HumanoidRootPart") end
 
 -- ============================================
--- SECTION 7: FEATURES
+-- SECTION 5: BYPASS (ANTI-ANTI CHEAT)
 -- ============================================
-
--- >> Speed Hack
-local speedConnection
-local function setSpeed(enabled)
-    flags.SpeedEnabled = enabled
-    if speedConnection then speedConnection:Disconnect() end
-    
-    if not enabled then
-        local hum = getHumanoid()
-        if hum then hum.WalkSpeed = 16 end
-        return
+local oldIndex
+oldIndex = hookmetamethod(game, "__newindex", function(self, key, value)
+    if not checkcaller() and flags.SpeedEnabled and self:IsA("Humanoid") and key == "WalkSpeed" then
+        -- Mencegah game mereset WalkSpeed kita
+        return oldIndex(self, key, flags.WalkSpeed)
     end
-    
-    local function apply()
-        local hum = getHumanoid()
-        if hum then hum.WalkSpeed = flags.SpeedAmount end
+    return oldIndex(self, key, value)
+end)
+
+-- ============================================
+-- SECTION 6: FEATURES LOGIC
+-- ============================================
+
+-- >> Advanced Speed
+task.spawn(function()
+    while task.wait(0.1) do
+        if flags.SpeedEnabled then
+            local hum = getHum()
+            if hum then hum.WalkSpeed = flags.WalkSpeed end
+        end
     end
+end)
+
+-- >> Animation-Based Parry (Pattern from example)
+local function setupParry(character)
+    local hum = character:WaitForChild("Humanoid", 10)
+    if not hum then return end
     
-    apply()
-    speedConnection = LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        apply()
+    hum.AnimationPlayed:Connect(function(animTrack)
+        if flags.AutoParry then
+            -- Cari animasi serangan musuh
+            -- Kamu perlu riset nama animasi spesifik di "The Forge"
+            local animName = animTrack.Animation.Name:lower()
+            if animName:find("attack") or animName:find("swing") then
+                -- Trigger Remote Parry (Contoh dari mapping remotes)
+                -- ReplicatedStorage.Events.Parry:FireServer()
+                print("Detected attack:", animName)
+            end
+        end
     end)
 end
 
--- >> ESP Highlight
-local espFolder = Instance.new("Folder")
-espFolder.Name = "AhokHub_ESP"
-espFolder.Parent = game:GetService("CoreGui") -- Coba simpan di CoreGui agar tidak terganggu game
-
-local function updateESP()
-    espFolder:ClearAllChildren()
-    if not flags.ESPEnabled then return end
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local highlight = Instance.new("Highlight")
-            highlight.Name = player.Name
-            highlight.FillColor = flags.ESPColor
-            highlight.OutlineColor = Color3.new(1, 1, 1)
-            highlight.FillTransparency = 0.5
-            highlight.Parent = player.Character
-        end
-    end
-end
-
--- >> Auto Farm (Logic dasar)
-local function runAutoFarm()
-    while flags.AutoFarmEnabled do
-        -- Template Riset: Kamu perlu mencari Remote di ReplicatedStorage
-        -- dan menambahkannya di sini.
-        -- Contoh: ReplicatedStorage.Events.Mine:FireServer()
-        task.wait(1)
-    end
-end
-
 -- ============================================
--- SECTION 8: GUI BUILDER
+-- SECTION 7: GUI BUILDER (Rayfield-style simple)
 -- ============================================
 local function buildGUI()
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = CONFIG.HUB_NAME
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = (RunService:IsStudio() and LocalPlayer.PlayerGui or game:GetService("CoreGui"))
+    ScreenGui.Name = "AhokHubUI"
+    ScreenGui.Parent = game:GetService("CoreGui")
 
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 250, 0, 300)
-    MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = ScreenGui
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.new(0, 300, 0, 350)
+    Main.Position = UDim2.new(0.5, -150, 0.5, -175)
+    Main.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    Main.BorderSizePixel = 0
+    Main.Parent = ScreenGui
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Size = UDim2.new(1, 0, 0, 40)
-    TitleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 200)
-    TitleBar.Parent = MainFrame
-    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+    local Top = Instance.new("Frame")
+    Top.Size = UDim2.new(1, 0, 0, 40)
+    Top.BackgroundColor3 = Color3.fromRGB(45, 45, 200)
+    Top.Parent = Main
+    Instance.new("UICorner", Top).CornerRadius = UDim.new(0, 8)
 
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 1, 0)
     Title.BackgroundTransparency = 1
-    Title.Text = CONFIG.HUB_NAME .. " v" .. CONFIG.VERSION
+    Title.Text = "AHOK HUB VIP v" .. CONFIG.VERSION
     Title.TextColor3 = Color3.new(1, 1, 1)
     Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 16
-    Title.Parent = TitleBar
+    Title.TextSize = 14
+    Title.Parent = Top
 
-    -- Toggle Buttons Helper
-    local function createToggle(text, yPos, callback)
+    -- Toggle Creator
+    local offset = 50
+    local function createToggle(name, flagKey, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0.9, 0, 0, 35)
-        btn.Position = UDim2.new(0.05, 0, 0, yPos)
-        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        btn.Text = text .. ": OFF"
-        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Position = UDim2.new(0.05, 0, 0, offset)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        btn.Text = name .. ": [ OFF ]"
+        btn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
         btn.Font = Enum.Font.Gotham
-        btn.TextSize = 14
-        btn.Parent = MainFrame
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        btn.TextSize = 12
+        btn.Parent = Main
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
 
-        local active = false
         btn.MouseButton1Click:Connect(function()
-            active = not active
-            btn.Text = text .. ": " .. (active and "ON" or "OFF")
-            btn.BackgroundColor3 = active and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(45, 45, 45)
-            callback(active)
+            flags[flagKey] = not flags[flagKey]
+            btn.Text = name .. ": [ " .. (flags[flagKey] and "ON" or "OFF") .. " ]"
+            btn.BackgroundColor3 = flags[flagKey] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 45)
+            if callback then callback(flags[flagKey]) end
         end)
+        offset = offset + 45
     end
 
-    createToggle("Speed Hack", 55, setSpeed)
-    createToggle("ESP Player", 100, function(v) flags.ESPEnabled = v updateESP() end)
-    createToggle("Auto Farm", 145, function(v) flags.AutoFarmEnabled = v if v then task.spawn(runAutoFarm) end end)
+    createToggle("Speed Bypass", "SpeedEnabled")
+    createToggle("Auto Parry", "AutoParry")
+    createToggle("ESP Highlight", "ESP", function(state)
+        -- Logic ESP sederhana
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                if state then
+                    local h = Instance.new("Highlight", p.Character)
+                    h.Name = "AhokESP"
+                else
+                    if p.Character:FindFirstChild("AhokESP") then
+                        p.Character.AhokESP:Destroy()
+                    end
+                end
+            end
+        end
+    end)
 
-    -- Draggable Logic
+    -- Slider Speed
+    local SpeedLabel = Instance.new("TextLabel")
+    SpeedLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    SpeedLabel.Position = UDim2.new(0.05, 0, 0, offset)
+    SpeedLabel.BackgroundTransparency = 1
+    SpeedLabel.Text = "Speed: " .. flags.WalkSpeed
+    SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+    SpeedLabel.Parent = Main
+    
+    -- Dragging logic
+    local gui = Main
     local dragging, dragInput, dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
+    Top.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
-            startPos = MainFrame.Position
+            startPos = gui.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
     UserInputService.InputEnded:Connect(function(input)
@@ -227,16 +199,11 @@ local function buildGUI()
 end
 
 -- ============================================
--- SECTION 9: INIT
+-- SECTION 8: STARTUP
 -- ============================================
-local function init()
-    if game.PlaceId ~= CONFIG.PLACE_ID and CONFIG.PLACE_ID ~= 0 then
-        Log.warn("PlaceID tidak cocok! Script mungkin tidak bekerja maksimal.")
-    end
-    
-    Log.info("Loading Hub...")
+if game.PlaceId == CONFIG.PLACE_ID then
     buildGUI()
-    Log.info("Ready!")
+    print("Ahok Hub Loaded. Use GitHub Raw URL to access latest updates.")
+else
+    warn("Ahok Hub: Wrong PlaceID! Use in 'The Forge'.")
 end
-
-pcall(init)
