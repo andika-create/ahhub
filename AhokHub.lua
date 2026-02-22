@@ -35,12 +35,12 @@ local HttpService    = game:GetService("HttpService")
 -- ============================================
 local LocalPlayer = Players.LocalPlayer
 local flags = {
-    WalkSpeed      = 50, -- Default ditingkatkan
+    WalkSpeed      = 90, -- Default ditingkatkan ke 90
     SpeedEnabled   = false,
     AutoParry      = false,
     AutoFarm       = false,
     ESP            = false,
-    InfJump        = false, -- Fitur Baru
+    InfJump        = false,
     TeleportSpeed  = 50,
 }
 getgenv().AhokFlags = flags
@@ -146,13 +146,13 @@ local function buildGUI()
     Title.Parent = Top
 
     -- Toggle Creator
-    local offset = 50
+    local currentOffset = 50
     local function createToggle(name, flagKey, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0.9, 0, 0, 35)
-        btn.Position = UDim2.new(0.05, 0, 0, offset)
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-        btn.Text = name .. ": [ OFF ]"
+        btn.Position = UDim2.new(0.05, 0, 0, currentOffset)
+        btn.BackgroundColor3 = flags[flagKey] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 45)
+        btn.Text = name .. ": [ " .. (flags[flagKey] and "ON" or "OFF") .. " ]"
         btn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 12
@@ -165,14 +165,14 @@ local function buildGUI()
             btn.BackgroundColor3 = flags[flagKey] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 45)
             if callback then callback(flags[flagKey]) end
         end)
-        offset = offset + 45
+        currentOffset = currentOffset + 40
     end
 
+    -- Menambahkan semua tombol secara berurutan
     createToggle("Speed Bypass", "SpeedEnabled")
-    createToggle("Infinite Jump", "InfJump") -- Tombol Baru
+    createToggle("Infinite Jump", "InfJump")
     createToggle("Auto Parry", "AutoParry")
     createToggle("ESP Highlight", "ESP", function(state)
-        -- Logic ESP sederhana
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
                 if state then
@@ -187,10 +187,13 @@ local function buildGUI()
         end
     end)
 
+    -- Space for Slider
+    currentOffset = currentOffset + 10
+
     -- Slider Speed
     local SpeedLabel = Instance.new("TextLabel")
     SpeedLabel.Size = UDim2.new(0.9, 0, 0, 20)
-    SpeedLabel.Position = UDim2.new(0.05, 0, 0, offset)
+    SpeedLabel.Position = UDim2.new(0.05, 0, 0, currentOffset)
     SpeedLabel.BackgroundTransparency = 1
     SpeedLabel.Text = "Speed: " .. flags.WalkSpeed
     SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -200,7 +203,7 @@ local function buildGUI()
 
     local SpeedSlider = Instance.new("TextButton")
     SpeedSlider.Size = UDim2.new(0.9, 0, 0, 10)
-    SpeedSlider.Position = UDim2.new(0.05, 0, 0, offset + 25)
+    SpeedSlider.Position = UDim2.new(0.05, 0, 0, currentOffset + 25)
     SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     SpeedSlider.Text = ""
     SpeedSlider.Parent = Main
@@ -226,7 +229,6 @@ local function buildGUI()
             end)
         end
     end)
-    offset = offset + 50
     
     -- Dragging logic
     local gui = Main
